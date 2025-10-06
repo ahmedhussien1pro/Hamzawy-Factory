@@ -1,0 +1,345 @@
+// Prisma schema (final fixed) — Factory & Inventory Management
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------
+// Enums
+// ------------------
+enum UserRole {
+  ADMIN
+  MANAGER
+  WAREHOUSE_STAFF
+  FACTORY_STAFF
+  ACCOUNTANT
+  SALES
+}
+
+enum MovementType {
+  IN
+  OUT
+  ADJUST
+}
+
+enum MovementReason {
+  PURCHASE
+  SALE_CONSUME
+  MANUFACTURE_CONSUME
+  MANUFACTURE_RETURN
+  ADJUSTMENT
+}
+
+enum OrderStatus {
+  DRAFT
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum JobStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum TransactionType {
+  REVENUE
+  EXPENSE
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CHEQUE
+  CREDIT
+}
+
+enum BOMStatus {
+  DRAFT
+  ACTIVE
+  DEPRECATED
+}
+
+enum WithdrawalStatus {
+  CONSUMED
+  RETURNED
+  PENDING
+}
+
+// ------------------
+// Models
+// ------------------
+
+model User {
+  id                  String   @id @default(uuid())
+  name                String
+  email               String  @unique
+  phone               String?  @unique
+  passwordHash        String
+  role                UserRole @default(WAREHOUSE_STAFF)
+  isLocked            Boolean  @default(false)
+  failedLoginAttempts Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  // relations
+  inventoryMovements InventoryMovement[]
+  startedJobs        ManufacturingJob[]        @relation("JobStarter")
+  completedJobs      ManufacturingJob[]        @relation("JobCompleter")
+  salesOrders        Order[]                   @relation("SalesRep")
+  financialsRecorded FinancialTransaction[]    @relation("RecordedBy")
+  paymentsRecorded   Payment[]                 @relation("RecordedPayments")
+  withdrawals        ManufacturingWithdrawal[]
+
+  @@map("users")
+}
+
+model ItemCode {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  unit        String?
+  minQuantity Int      @default(0)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products Product[]
+
+  @@map("item_codes")
+}
+
+model Product {
+  id             String    @id @default(uuid())
+  itemCodeId     String? // optional FK to ItemCode
+  name           String
+  description    String?
+  sku            String?   @unique
+  purchasePrice  Decimal   @db.Decimal(16, 2)
+  salePrice      Decimal?  @db.Decimal(16, 2)
+  quantity       Int       @default(0)
+  unit           String?
+  lastPurchaseAt DateTime?
+  isManufactured Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // relations
+  itemCode          ItemCode?                 @relation(fields: [itemCodeId], references: [id])
+  movements         InventoryMovement[]
+  bomComponents     BOMComponent[]
+  orderItems        OrderItem[]
+  manufacturingJobs ManufacturingJob[]        @relation("TargetProduct")
+  boms              BOM[]                     @relation("TargetProductBOM")
+  withdrawals       ManufacturingWithdrawal[]
+
+  @@index([sku])
+  @@map("products")
+}
+
+model InventoryMovement {
+  id               String         @id @default(uuid())
+  productId        String
+  type             MovementType
+  reason           MovementReason
+  quantity         Int
+  performedById    String? // nullable for system operations
+  relatedEntityId  String? // orderId / jobId / purchase invoice id
+  unitCostSnapshot Decimal        @db.Decimal(16, 2)
+  remainingAfter   Int
+  notes            String?
+  createdAt        DateTime       @default(now())
+
+  product     Product @relation(fields: [productId], references: [id])
+  performedBy User?   @relation(fields: [performedById], references: [id])
+
+  @@index([productId, createdAt])
+  @@map("inventory_movements")
+}
+
+model BOM {
+  id                      String    @id @default(uuid())
+  code                    String    @unique
+  name                    String
+  targetProductId         String?
+  wasteFactor             Decimal   @default("0.000000") @db.Decimal(18, 6)
+  expectedManufactureTime Int? // minutes
+  estimatedCost           Decimal?  @db.Decimal(16, 2)
+  status                  BOMStatus @default(DRAFT)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  targetProduct     Product?           @relation("TargetProductBOM", fields: [targetProductId], references: [id])
+  components        BOMComponent[]
+  manufacturingJobs ManufacturingJob[]
+
+  @@map("boms")
+}
+
+model BOMComponent {
+  id         String  @id @default(uuid())
+  bomId      String
+  productId  String
+  qtyPerUnit Decimal @db.Decimal(18, 6)
+
+  bom     BOM     @relation(fields: [bomId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([bomId, productId])
+  @@map("bom_components")
+}
+
+model ManufacturingJob {
+  id              String    @id @default(uuid())
+  jobNumber       String    @unique
+  bomId           String?
+  targetProductId String?
+  targetQuantity  Int
+  status          JobStatus @default(PENDING)
+  startedById     String?
+  completedById   String?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  bom           BOM?                      @relation(fields: [bomId], references: [id])
+  targetProduct Product?                  @relation("TargetProduct", fields: [targetProductId], references: [id])
+  startedBy     User?                     @relation("JobStarter", fields: [startedById], references: [id])
+  completedBy   User?                     @relation("JobCompleter", fields: [completedById], references: [id])
+  withdrawals   ManufacturingWithdrawal[]
+
+  @@index([status, completedAt])
+  @@map("manufacturing_jobs")
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String?  @unique
+  email     String?  @unique
+  address   String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+
+  @@map("customers")
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  orderNumber     String      @unique
+  customerId      String
+  salesRepId      String?
+  status          OrderStatus @default(DRAFT)
+  totalAmount     Decimal     @default("0.00") @db.Decimal(16, 2)
+  deliveryAddress String?
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  customer Customer    @relation(fields: [customerId], references: [id])
+  salesRep User?       @relation("SalesRep", fields: [salesRepId], references: [id])
+  items    OrderItem[]
+  payments Payment[]
+
+  @@index([status, createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id               String  @id @default(uuid())
+  orderId          String
+  productId        String
+  quantity         Int
+  priceSnapshot    Decimal @db.Decimal(16, 2)
+  unitCostSnapshot Decimal @db.Decimal(16, 2)
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model FinancialTransaction {
+  id              String          @id @default(uuid())
+  type            TransactionType
+  amount          Decimal         @db.Decimal(16, 2)
+  description     String
+  date            DateTime
+  relatedEntityId String?
+  recordedById    String
+  notes           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  recordedBy User @relation("RecordedBy", fields: [recordedById], references: [id])
+
+  @@index([type, date])
+  @@map("financial_transactions")
+}
+
+model Payment {
+  id           String        @id @default(uuid())
+  orderId      String? // optional if manual revenue
+  amount       Decimal       @db.Decimal(16, 2)
+  method       PaymentMethod
+  paidBy       String? // customer name/identifier
+  recordedById String // user who recorded
+  recordedAt   DateTime      @default(now())
+
+  order      Order? @relation(fields: [orderId], references: [id])
+  recordedBy User   @relation("RecordedPayments", fields: [recordedById], references: [id])
+
+  @@map("payments")
+}
+
+model AuditLog {
+  id            String      @id @default(uuid())
+  tableName     String
+  recordId      String
+  actionType    AuditAction
+  oldData       Json?
+  newData       Json?
+  performedById String?
+  ipAddress     String?
+  createdAt     DateTime    @default(now())
+
+  @@index([tableName, recordId, createdAt])
+  @@map("audit_logs")
+}
+
+model ManufacturingWithdrawal {
+  id            String           @id @default(uuid())
+  jobId         String?
+  productId     String
+  qty           Int
+  withdrawnById String?
+  withdrawnAt   DateTime         @default(now())
+  status        WithdrawalStatus
+  notes         String?
+
+  job         ManufacturingJob? @relation(fields: [jobId], references: [id])
+  product     Product           @relation(fields: [productId], references: [id])
+  withdrawnBy User?             @relation(fields: [withdrawnById], references: [id])
+
+  @@map("manufacturing_withdrawals")
+}
