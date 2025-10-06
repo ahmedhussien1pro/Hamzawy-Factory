@@ -2,31 +2,28 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
-  Container,
   Box,
+  Container,
   Typography,
+  Grid,
   Button,
-  Paper,
   CircularProgress,
   Alert,
-  Grid,
+  Paper,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { useAuth } from '@/context/AuthContext';
-import { getAllItemCodes, deleteItemCode } from '@/services/itemCodeService';
+import { getItemCodes } from '@/services/itemCodeService';
 import ItemCodeCard from '@/components/itemCodes/ItemCodeCard';
+import { useAuth } from '@/context/AuthContext';
 
 const professionalTheme = createTheme({
   direction: 'rtl',
   palette: {
     primary: { main: '#1e40af', light: '#3b82f6', dark: '#1e3a8a' },
-    error: { main: '#dc2626' },
     background: { default: '#f1f5f9', paper: '#ffffff' },
   },
-  typography: {
-    fontFamily: '"Inter","Cairo","Arial",sans-serif',
-  },
+  typography: { fontFamily: '"Inter", "Cairo", "Arial", sans-serif' },
 });
 
 export default function ItemCodesPage() {
@@ -44,8 +41,8 @@ export default function ItemCodesPage() {
 
     async function fetchCodes() {
       try {
-        const res = await getAllItemCodes(token);
-        setCodes(res?.data?.data || res?.data || []);
+        const res = await getItemCodes(token);
+        setCodes(res?.data || res);
       } catch (err) {
         console.error('Error fetching item codes:', err);
         setError('حدث خطأ أثناء تحميل الأكواد.');
@@ -57,18 +54,6 @@ export default function ItemCodesPage() {
     fetchCodes();
   }, [token]);
 
-  const handleDelete = async (id) => {
-    if (!confirm('هل أنت متأكد من حذف هذا الكود؟')) return;
-    try {
-      await deleteItemCode(id, token);
-      setCodes(codes.filter((code) => code.id !== id));
-      alert('✅ تم حذف الكود بنجاح');
-    } catch (err) {
-      console.error('Error deleting code:', err);
-      alert('❌ حدث خطأ أثناء حذف الكود');
-    }
-  };
-
   return (
     <ThemeProvider theme={professionalTheme}>
       <Box
@@ -76,71 +61,63 @@ export default function ItemCodesPage() {
           minHeight: '100vh',
           background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
           py: 6,
-          px: 2,
         }}>
         <Container maxWidth='lg'>
-          <Paper
-            elevation={4}
+          {/* Header */}
+          <Box
             sx={{
-              p: { xs: 3, md: 5 },
-              borderRadius: 3,
-              backgroundColor: 'background.paper',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              mb: 4,
             }}>
-            {/* Header */}
-            <Box
-              sx={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                mb: 4,
-                flexWrap: 'wrap',
-                gap: 2,
-              }}>
-              <Typography
-                variant='h5'
-                fontWeight={700}
+            <Typography
+              variant='h4'
+              fontWeight={700}
+              color='primary'
+              sx={{ textAlign: 'right' }}>
+              🏷️ أكواد المنتجات
+            </Typography>
+
+            <Link href='/item-codes/new' passHref>
+              <Button
+                variant='contained'
                 color='primary'
-                textAlign='right'>
-                قائمة الأكواد المخزنية
-              </Typography>
+                startIcon={<AddIcon />}
+                sx={{ fontWeight: 600, borderRadius: 2 }}>
+                إضافة كود جديد
+              </Button>
+            </Link>
+          </Box>
 
-              <Link href='/item-codes/create' passHref>
-                <Button
-                  variant='contained'
-                  startIcon={<AddIcon />}
-                  sx={{
-                    fontWeight: 600,
-                    borderRadius: 2,
-                    px: 3,
-                    py: 1,
-                  }}>
-                  إضافة كود جديد
-                </Button>
-              </Link>
+          {/* Content */}
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
+              <CircularProgress color='primary' />
             </Box>
-
-            {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-                <CircularProgress color='primary' />
-              </Box>
-            ) : error ? (
-              <Alert severity='error' sx={{ borderRadius: 2 }}>
-                {error}
-              </Alert>
-            ) : codes.length === 0 ? (
-              <Typography textAlign='center' color='text.secondary'>
-                لا توجد أكواد مسجلة بعد.
+          ) : error ? (
+            <Alert severity='error'>{error}</Alert>
+          ) : codes.length === 0 ? (
+            <Paper
+              sx={{
+                textAlign: 'center',
+                py: 8,
+                borderRadius: 3,
+                backgroundColor: 'background.paper',
+              }}>
+              <Typography variant='h6' color='text.secondary'>
+                لا توجد أكواد مسجلة حالياً
               </Typography>
-            ) : (
-              <Grid container spacing={3}>
-                {codes.map((code) => (
-                  <Grid item xs={12} sm={6} md={4} key={code.id}>
-                    <ItemCodeCard itemCode={code} onDelete={handleDelete} />
-                  </Grid>
-                ))}
-              </Grid>
-            )}
-          </Paper>
+            </Paper>
+          ) : (
+            <Grid container spacing={3}>
+              {codes.map((code) => (
+                <Grid item xs={12} sm={6} md={4} key={code.id}>
+                  <ItemCodeCard itemCode={code} />
+                </Grid>
+              ))}
+            </Grid>
+          )}
         </Container>
       </Box>
     </ThemeProvider>

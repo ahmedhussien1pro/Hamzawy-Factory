@@ -2,15 +2,18 @@
 import { useState } from 'react';
 import {
   Box,
+  Container,
+  Typography,
+  Paper,
   TextField,
   Button,
-  Paper,
-  Typography,
-  Grid,
-  useTheme,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { createItemCode } from '@/services/itemCodeService';
 
@@ -18,44 +21,47 @@ const professionalTheme = createTheme({
   direction: 'rtl',
   palette: {
     primary: { main: '#1e40af', light: '#3b82f6', dark: '#1e3a8a' },
-    error: { main: '#dc2626' },
     background: { default: '#f1f5f9', paper: '#ffffff' },
   },
-  typography: {
-    fontFamily: '"Inter","Cairo","Arial",sans-serif',
-  },
+  typography: { fontFamily: '"Inter", "Cairo", "Arial", sans-serif' },
 });
 
-export default function CreateItemCodePage() {
-  const theme = useTheme();
-  const router = useRouter();
+export default function NewItemCodePage() {
   const { token } = useAuth();
+  const router = useRouter();
 
   const [form, setForm] = useState({
     code: '',
     name: '',
     unit: '',
-    minQuantity: 0,
+    minQuantity: '',
     notes: '',
   });
-
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm({ ...form, [name]: value });
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
+    setSuccess(false);
     setLoading(true);
+
     try {
       await createItemCode(form, token);
-      alert('✅ تم إضافة الكود بنجاح!');
-      router.push('/item-codes');
+      setSuccess(true);
+      setTimeout(() => router.push('/item-codes'), 1000);
     } catch (err) {
       console.error('Error creating item code:', err);
-      alert('❌ حدث خطأ أثناء إضافة الكود');
+      setError(
+        err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          'حدث خطأ أثناء إنشاء الكود.'
+      );
     } finally {
       setLoading(false);
     }
@@ -70,108 +76,125 @@ export default function CreateItemCodePage() {
           py: 6,
           px: 2,
         }}>
-        <Paper
-          sx={{
-            p: { xs: 2, sm: 4, md: 5 },
-            borderRadius: 3,
-            boxShadow: 6,
-            backgroundColor: 'background.paper',
-            maxWidth: 800,
-            mx: 'auto',
-          }}>
-          <Typography
-            variant='h5'
+        <Container maxWidth='sm'>
+          <Paper
+            elevation={4}
             sx={{
-              mb: { xs: 3, md: 5 },
-              fontWeight: 700,
-              color: theme.palette.primary.main,
-              textAlign: 'center',
+              p: { xs: 3, md: 5 },
+              borderRadius: 3,
+              backgroundColor: 'background.paper',
             }}>
-            ➕ إضافة كود جديد
-          </Typography>
+            {/* Header */}
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: 3,
+              }}>
+              <Typography variant='h5' fontWeight={700} color='primary'>
+                إضافة كود جديد
+              </Typography>
 
-          <Box component='form' onSubmit={handleSubmit}>
-            <Grid container spacing={4}>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label='الكود'
-                  name='code'
-                  value={form.code}
-                  onChange={handleChange}
-                  required
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label='اسم المنتج'
-                  name='name'
-                  value={form.name}
-                  onChange={handleChange}
-                  required
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label='الوحدة'
-                  name='unit'
-                  value={form.unit}
-                  onChange={handleChange}
-                  placeholder='مثلاً: قطعة / كجم / لتر'
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label='الحد الأدنى للكمية'
-                  name='minQuantity'
-                  type='number'
-                  value={form.minQuantity}
-                  onChange={handleChange}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  multiline
-                  minRows={3}
-                  label='ملاحظات'
-                  name='notes'
-                  value={form.notes}
-                  onChange={handleChange}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-
-              <Grid item xs={12}>
+              <Link href='/item-codes' passHref>
                 <Button
-                  type='submit'
-                  variant='contained'
-                  fullWidth
-                  disabled={loading}
+                  variant='outlined'
+                  startIcon={<ArrowBackIcon />}
                   sx={{
-                    py: 2,
-                    fontWeight: 700,
+                    fontWeight: 600,
                     borderRadius: 2,
-                    fontSize: { xs: '0.95rem', md: '1.05rem' },
-                    boxShadow: '0 6px 14px rgba(30,64,175,0.25)',
+                    px: 2,
+                    py: 0.8,
                   }}>
-                  {loading ? 'جاري الحفظ...' : 'حفظ الكود'}
+                  رجوع
                 </Button>
-              </Grid>
-            </Grid>
-          </Box>
-        </Paper>
+              </Link>
+            </Box>
+
+            {error && (
+              <Alert severity='error' sx={{ mb: 3, borderRadius: 2 }}>
+                {error}
+              </Alert>
+            )}
+            {success && (
+              <Alert severity='success' sx={{ mb: 3, borderRadius: 2 }}>
+                ✅ تم إنشاء الكود بنجاح
+              </Alert>
+            )}
+
+            <Box component='form' onSubmit={handleSubmit}>
+              <TextField
+                label='الكود'
+                name='code'
+                value={form.code}
+                onChange={handleChange}
+                fullWidth
+                required
+                margin='normal'
+              />
+
+              <TextField
+                label='اسم المنتج'
+                name='name'
+                value={form.name}
+                onChange={handleChange}
+                fullWidth
+                required
+                margin='normal'
+              />
+
+              <TextField
+                label='الوحدة (مثلاً: قطعة / متر)'
+                name='unit'
+                value={form.unit}
+                onChange={handleChange}
+                fullWidth
+                margin='normal'
+              />
+
+              <TextField
+                label='الحد الأدنى للكمية'
+                name='minQuantity'
+                value={form.minQuantity}
+                onChange={handleChange}
+                type='number'
+                fullWidth
+                margin='normal'
+              />
+
+              <TextField
+                label='ملاحظات'
+                name='notes'
+                value={form.notes}
+                onChange={handleChange}
+                fullWidth
+                margin='normal'
+                multiline
+                rows={3}
+              />
+
+              <Button
+                type='submit'
+                variant='contained'
+                color='primary'
+                fullWidth
+                disabled={loading}
+                sx={{ mt: 3, py: 1.5, fontWeight: 600 }}>
+                {loading ? (
+                  <>
+                    <CircularProgress
+                      size={22}
+                      sx={{ color: 'white', mr: 1 }}
+                    />
+                    جاري الحفظ...
+                  </>
+                ) : (
+                  'إضافة الكود'
+                )}
+              </Button>
+            </Box>
+          </Paper>
+        </Container>
       </Box>
     </ThemeProvider>
   );

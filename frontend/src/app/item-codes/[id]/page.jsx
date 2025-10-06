@@ -1,23 +1,25 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
-  Container,
   Box,
+  Container,
   Typography,
   CircularProgress,
-  Alert,
   Button,
-  ThemeProvider,
-  createTheme,
+  Alert,
+  Paper,
 } from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ItemCodeCard from '@/components/itemCodes/ItemCodeCard';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { useAuth } from '@/context/AuthContext';
 import { getItemCodeById, deleteItemCode } from '@/services/itemCodeService';
-import Link from 'next/link';
+import ItemCodeCard from '@/components/itemCodes/ItemCodeCard';
 
-const professionalTheme = createTheme({
+const theme = createTheme({
   direction: 'rtl',
   palette: {
     primary: { main: '#1e40af', light: '#3b82f6', dark: '#1e3a8a' },
@@ -49,7 +51,7 @@ export default function ItemCodeDetailsPage() {
         setItemCode(res?.data?.data || res?.data || res);
       } catch (err) {
         console.error('Error fetching item code:', err);
-        setError('حدث خطأ أثناء تحميل بيانات الكود.');
+        setError('حدث خطأ أثناء جلب بيانات الكود.');
       } finally {
         setLoading(false);
       }
@@ -58,20 +60,20 @@ export default function ItemCodeDetailsPage() {
     fetchItemCode();
   }, [id, token]);
 
-  const handleDelete = async (itemId) => {
+  const handleDelete = async () => {
     if (!confirm('هل أنت متأكد من حذف هذا الكود؟')) return;
     try {
-      await deleteItemCode(itemId, token);
-      alert('تم حذف الكود بنجاح ✅');
+      await deleteItemCode(id, token);
+      alert('تم حذف الكود بنجاح');
       router.push('/item-codes');
     } catch (err) {
-      console.error('Error deleting code:', err);
-      alert('حدث خطأ أثناء الحذف ❌');
+      console.error(err);
+      alert('حدث خطأ أثناء حذف الكود');
     }
   };
 
   return (
-    <ThemeProvider theme={professionalTheme}>
+    <ThemeProvider theme={theme}>
       <Box
         sx={{
           minHeight: '100vh',
@@ -81,15 +83,22 @@ export default function ItemCodeDetailsPage() {
         }}>
         <Container maxWidth='md'>
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
+            <Paper
+              sx={{
+                p: 6,
+                borderRadius: 3,
+                display: 'flex',
+                justifyContent: 'center',
+              }}>
               <CircularProgress color='primary' />
-            </Box>
+            </Paper>
           ) : error ? (
             <Alert severity='error' sx={{ borderRadius: 2 }}>
               {error}
             </Alert>
           ) : itemCode ? (
             <>
+              {/* Header */}
               <Box
                 sx={{
                   display: 'flex',
@@ -111,11 +120,30 @@ export default function ItemCodeDetailsPage() {
                 </Link>
               </Box>
 
-              <ItemCodeCard itemCode={itemCode} onDelete={handleDelete} />
+              {/* الكارت الجاهز */}
+              <ItemCodeCard itemCode={itemCode} />
+
+              <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
+                <Link href={`/item-codes/${id}/edit`} passHref>
+                  <Button
+                    variant='contained'
+                    color='primary'
+                    startIcon={<EditIcon />}>
+                    تعديل
+                  </Button>
+                </Link>
+                <Button
+                  variant='outlined'
+                  color='error'
+                  startIcon={<DeleteIcon />}
+                  onClick={handleDelete}>
+                  حذف
+                </Button>
+              </Box>
             </>
           ) : (
             <Typography textAlign='center' color='text.secondary'>
-              لم يتم العثور على الكود المطلوب.
+              لم يتم العثور على الكود.
             </Typography>
           )}
         </Container>
