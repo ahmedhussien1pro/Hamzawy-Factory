@@ -1,8 +1,8 @@
-// src/app/layout.jsx
 'use client';
 import { usePathname } from 'next/navigation';
 import { paths } from '../paths';
 import { AuthProvider } from '@/context/AuthContext';
+import { RTLProvider } from '@/styles/theme';
 import '../styles/global.css';
 
 export default function RootLayout({ children }) {
@@ -21,7 +21,9 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body style={{ margin: 0, padding: 0 }}>
-        <AuthProvider>{children}</AuthProvider>
+        <RTLProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </RTLProvider>
       </body>
     </html>
   );

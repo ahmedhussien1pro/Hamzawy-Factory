@@ -5,16 +5,20 @@ import {
   Box,
   Container,
   Typography,
-  Grid,
   Button,
   CircularProgress,
   Alert,
   Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { getItemCodes } from '@/services/itemCodeService';
-import ItemCodeCard from '@/components/itemCodes/ItemCodeCard';
 import { useAuth } from '@/context/AuthContext';
 
 const professionalTheme = createTheme({
@@ -110,13 +114,64 @@ export default function ItemCodesPage() {
               </Typography>
             </Paper>
           ) : (
-            <Grid container spacing={3}>
-              {codes.map((code) => (
-                <Grid item xs={12} sm={6} md={4} key={code.id}>
-                  <ItemCodeCard itemCode={code} />
-                </Grid>
-              ))}
-            </Grid>
+            <TableContainer
+              component={Paper}
+              sx={{
+                borderRadius: 3,
+                overflow: 'hidden',
+                boxShadow: 3,
+              }}>
+              <Table>
+                <TableHead sx={{ backgroundColor: '#1e40af' }}>
+                  <TableRow>
+                    <TableCell sx={{ color: 'white', fontWeight: 600 }}>
+                      الكود
+                    </TableCell>
+                    <TableCell sx={{ color: 'white', fontWeight: 600 }}>
+                      اسم المنتج
+                    </TableCell>
+                    <TableCell sx={{ color: 'white', fontWeight: 600 }}>
+                      الوحدة
+                    </TableCell>
+                    <TableCell sx={{ color: 'white', fontWeight: 600 }}>
+                      الحد الأدنى
+                    </TableCell>
+                    <TableCell sx={{ color: 'white', fontWeight: 600 }}>
+                      ملاحظات
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        color: 'white',
+                        fontWeight: 600,
+                        textAlign: 'center',
+                      }}>
+                      التفاصيل
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {codes.map((code) => (
+                    <TableRow key={code.id} hover>
+                      <TableCell>{code.code}</TableCell>
+                      <TableCell>{code.name}</TableCell>
+                      <TableCell>{code.unit || '-'}</TableCell>
+                      <TableCell>{code.minQuantity ?? 0}</TableCell>
+                      <TableCell>{code.notes || '-'}</TableCell>
+                      <TableCell align='center'>
+                        <Link href={`/item-codes/${code.id}`} passHref>
+                          <Button
+                            variant='outlined'
+                            color='primary'
+                            sx={{ borderRadius: 2, fontWeight: 600 }}>
+                            عرض
+                          </Button>
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           )}
         </Container>
       </Box>

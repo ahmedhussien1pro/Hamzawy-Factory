@@ -71,7 +71,7 @@ export default function UserDetailsPage() {
       cancelButtonText: 'إلغاء',
       confirmButtonColor: '#d33',
       cancelButtonColor: '#3085d6',
-      reverseButtons: true, // مناسب أكثر للـ RTL
+      reverseButtons: true,
     });
 
     if (!result.isConfirmed) return;

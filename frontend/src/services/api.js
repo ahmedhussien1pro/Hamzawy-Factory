@@ -19,6 +19,7 @@ api.interceptors.request.use((config) => {
       config.headers.Authorization = `Bearer ${token}`;
     }
   }
+
   return config;
 });
 
@@ -26,7 +27,6 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // لا تعمل redirect تلقائي هنا علشان مايفقدش الـ error
     return Promise.reject(error);
   }
 );

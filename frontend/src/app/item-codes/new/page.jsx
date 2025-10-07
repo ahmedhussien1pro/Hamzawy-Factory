@@ -49,12 +49,33 @@ export default function NewItemCodePage() {
     e.preventDefault();
     setError(null);
     setSuccess(false);
-    setLoading(true);
 
+    if (!form.code || !form.name) {
+      setError('يرجى ملء الحقول الإلزامية.');
+      return;
+    }
+
+    setLoading(true);
     try {
-      await createItemCode(form, token);
+      // ✅ تأكدنا أن minQuantity يتحول لرقم فعلاً
+      const payload = {
+        ...form,
+        minQuantity: form.minQuantity ? Number(form.minQuantity) : 0,
+      };
+
+      await createItemCode(payload, token);
       setSuccess(true);
-      setTimeout(() => router.push('/item-codes'), 1000);
+
+      // تنظيف الفورم بعد الإضافة
+      setForm({
+        code: '',
+        name: '',
+        unit: '',
+        minQuantity: '',
+        notes: '',
+      });
+
+      setTimeout(() => router.push('/item-codes'), 1200);
     } catch (err) {
       console.error('Error creating item code:', err);
       setError(
