@@ -21,6 +21,7 @@ import AddIcon from '@mui/icons-material/Add';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { useAuth } from '@/context/AuthContext';
 import { getProducts, deleteProduct } from '@/services/productService';
+import Swal from 'sweetalert2';
 
 const professionalTheme = createTheme({
   direction: 'rtl',
@@ -37,18 +38,12 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
-  useEffect(() => {
-    if (!token) {
-      setError('يرجى تسجيل الدخول أولاً.');
-      setLoading(false);
-      return;
-    }
 
-    async function fetchProducts() {
+  useEffect(() => {
+    async function fetch() {
       try {
-        const res = await getProducts(token);
-        const data = res?.data?.data ?? res?.data ?? res;
-        setProducts(Array.isArray(data) ? data : []);
+        const res = await getProducts();
+        setProducts(res); // بعد توحيد الإرجاع في service
       } catch (err) {
         console.error('Error fetching products:', err);
         setError('حدث خطأ أثناء تحميل المنتجات.');
@@ -56,25 +51,35 @@ export default function ProductsPage() {
         setLoading(false);
       }
     }
-
-    fetchProducts();
+    fetch();
   }, [token]);
 
   const handleDelete = async (id) => {
-    if (!confirm('هل أنت متأكد من حذف هذا المنتج؟')) return;
+    const result = await Swal.fire({
+      title: 'هل أنت متأكد؟',
+      text: 'لن يمكنك التراجع بعد الحذف!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'نعم، احذف',
+      cancelButtonText: 'إلغاء',
+      confirmButtonColor: '#d33',
+    });
+
+    if (!result.isConfirmed) return;
+
     try {
       setDeletingId(id);
-      await deleteProduct(id, token);
+      await deleteProduct(id);
       setProducts((s) => s.filter((p) => p.id !== id));
-      alert('تم حذف المنتج بنجاح');
+      Swal.fire('تم الحذف', 'تم حذف المنتج بنجاح', 'success');
     } catch (err) {
       console.error('Delete error:', err);
-      alert('حدث خطأ أثناء حذف المنتج');
+      Swal.fire('خطأ', 'حدث خطأ أثناء حذف المنتج', 'error');
     } finally {
       setDeletingId(null);
     }
   };
-  const rows = Array.isArray(products) ? products : [];
+
   return (
     <ThemeProvider theme={professionalTheme}>
       <Box
@@ -142,10 +147,10 @@ export default function ProductsPage() {
                       اسم المنتج
                     </TableCell>
                     <TableCell sx={{ color: 'white', fontWeight: 600 }}>
-                      الكمية
+                      الوحدة
                     </TableCell>
                     <TableCell sx={{ color: 'white', fontWeight: 600 }}>
-                      الوحدة
+                      الكمية
                     </TableCell>
                     <TableCell sx={{ color: 'white', fontWeight: 600 }}>
                       سعر البيع
@@ -161,21 +166,52 @@ export default function ProductsPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {rows.map((p) => (
+                  {products.map((p) => (
                     <TableRow key={p.id} hover>
-                      <TableCell>
+                      <TableCell sx={{ py: 1.5 }}>
                         {p.sku || (p.itemCode?.code ?? p.id)}
                       </TableCell>
-                      <TableCell>{p.name}</TableCell>
-                      <TableCell>{p.quantity ?? 0}</TableCell>
-                      <TableCell>{p.unit || '-'}</TableCell>
-                      <TableCell>{p.salePrice || '-'}</TableCell>
+                      <TableCell sx={{ py: 1.5 }}>{p.name}</TableCell>
+                      <TableCell sx={{ py: 1.5 }}>{p.unit || '-'}</TableCell>
+                      <TableCell sx={{ py: 1.5 }}>{p.quantity ?? 0}</TableCell>
+                      <TableCell sx={{ py: 1.5 }}>
+                        {p.salePrice
+                          ? `${Number(p.salePrice).toFixed(2)} ج.م`
+                          : '-'}
+                      </TableCell>
                       <TableCell align='center'>
-                        <Link href={`/products/${p.id}`}>
-                          <Button variant='outlined' color='primary'>
-                            عرض
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            gap: 1,
+                            justifyContent: 'center',
+                          }}>
+                          <Link href={`/products/${p.id}`} passHref>
+                            <Button
+                              size='small'
+                              variant='outlined'
+                              sx={{ borderRadius: 2, fontWeight: 600 }}>
+                              عرض
+                            </Button>
+                          </Link>
+                          <Link href={`/products/${p.id}/edit`} passHref>
+                            <Button
+                              size='small'
+                              variant='contained'
+                              color='primary'
+                              sx={{ borderRadius: 2, fontWeight: 600 }}>
+                              تعديل
+                            </Button>
+                          </Link>
+                          <Button
+                            size='small'
+                            variant='outlined'
+                            color='error'
+                            onClick={() => handleDelete(p.id)}
+                            disabled={deletingId === p.id}>
+                            {deletingId === p.id ? 'جارٍ الحذف...' : 'حذف'}
                           </Button>
-                        </Link>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   ))}

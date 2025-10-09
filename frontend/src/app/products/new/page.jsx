@@ -9,7 +9,6 @@ import {
   TextField,
   Button,
   CircularProgress,
-  Alert,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -19,11 +18,12 @@ import Autocomplete from '@mui/material/Autocomplete';
 import { useAuth } from '@/context/AuthContext';
 import { getItemCodes } from '@/services/itemCodeService';
 import { createProduct } from '@/services/productService';
+import Swal from 'sweetalert2';
 
 const theme = createTheme({
   direction: 'rtl',
   palette: {
-    primary: { main: '#1e40af' },
+    primary: { main: '#1e40af', light: '#3b82f6', dark: '#1e3a8a' },
     background: { default: '#f1f5f9', paper: '#fff' },
   },
   typography: { fontFamily: '"Inter","Cairo","Arial",sans-serif' },
@@ -32,11 +32,9 @@ const theme = createTheme({
 export default function NewProductPage() {
   const { token } = useAuth();
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
   const [codes, setCodes] = useState([]);
-  const [searchLoading, setSearchLoading] = useState(true);
+  const [loadingCodes, setLoadingCodes] = useState(true);
 
   const [form, setForm] = useState({
     sku: '',
@@ -52,26 +50,22 @@ export default function NewProductPage() {
   });
 
   useEffect(() => {
-    if (!token) {
-      setSearchLoading(false);
-      return;
-    }
+    if (!token) return setLoadingCodes(false);
     async function fetchCodes() {
       try {
         const res = await getItemCodes(token);
         const data = res?.data?.data ?? res?.data ?? res;
         setCodes(Array.isArray(data) ? data : []);
       } catch (err) {
-        console.error('Error fetching item codes', err);
+        console.error('Error fetching item codes:', err);
       } finally {
-        setSearchLoading(false);
+        setLoadingCodes(false);
       }
     }
     fetchCodes();
   }, [token]);
 
   const handleSelectCode = (event, value) => {
-    // value can be a full itemCode object or a string (free input)
     if (!value) {
       setForm({
         ...form,
@@ -84,11 +78,9 @@ export default function NewProductPage() {
       return;
     }
     if (typeof value === 'string') {
-      // user typed a free string (use as SKU)
-      setForm({ ...form, sku: value, itemCodeId: '', name: form.name });
+      setForm({ ...form, sku: value });
       return;
     }
-    // value is an object (itemCode)
     setForm((prev) => ({
       ...prev,
       itemCodeId: value.id,
@@ -104,15 +96,13 @@ export default function NewProductPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(null);
-    // basic validation
     if (!form.name.trim()) {
-      setError('الرجاء إدخال اسم المنتج.');
+      Swal.fire('تنبيه', 'الرجاء إدخال اسم المنتج.', 'warning');
       return;
     }
+
     setSaving(true);
     try {
-      // prepare payload
       const payload = {
         sku: form.sku || undefined,
         name: form.name,
@@ -127,14 +117,22 @@ export default function NewProductPage() {
         minQuantity: form.minQuantity ? Number(form.minQuantity) : undefined,
         notes: form.notes || undefined,
       };
+
       await createProduct(payload, token);
-      router.push('/products');
+      Swal.fire({
+        icon: 'success',
+        title: 'تم الحفظ بنجاح!',
+        text: 'تم إنشاء المنتج بنجاح.',
+        confirmButtonText: 'حسناً',
+      }).then(() => router.push('/products'));
     } catch (err) {
-      console.error('Error creating product', err);
-      setError(
+      console.error('Error creating product:', err);
+      Swal.fire(
+        'خطأ',
         err?.response?.data?.message ||
           err?.message ||
-          'حدث خطأ أثناء إنشاء المنتج.'
+          'حدث خطأ أثناء إنشاء المنتج.',
+        'error'
       );
     } finally {
       setSaving(false);
@@ -155,7 +153,7 @@ export default function NewProductPage() {
             <Box
               sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
               <Typography variant='h5' fontWeight={700} color='primary'>
-                إضافة منتج جديد
+                ➕ إضافة منتج جديد
               </Typography>
               <Link href='/products' passHref>
                 <Button variant='outlined' startIcon={<ArrowBackIcon />}>
@@ -164,21 +162,15 @@ export default function NewProductPage() {
               </Link>
             </Box>
 
-            {error && (
-              <Alert severity='error' sx={{ mb: 2 }}>
-                {error}
-              </Alert>
-            )}
-
             <Autocomplete
               freeSolo
               options={codes}
               getOptionLabel={(option) =>
                 typeof option === 'string'
                   ? option
-                  : option.code + ' — ' + option.name
+                  : `${option.code} — ${option.name}`
               }
-              loading={searchLoading}
+              loading={loadingCodes}
               onChange={handleSelectCode}
               renderInput={(params) => (
                 <TextField
@@ -191,7 +183,7 @@ export default function NewProductPage() {
                     ...params.InputProps,
                     endAdornment: (
                       <>
-                        {searchLoading ? <CircularProgress size={20} /> : null}
+                        {loadingCodes ? <CircularProgress size={20} /> : null}
                         {params.InputProps.endAdornment}
                       </>
                     ),
@@ -245,7 +237,7 @@ export default function NewProductPage() {
                 sx={{ mb: 2 }}
               />
               <TextField
-                label='سعر الشراء'
+                label='سعر الشراء (ج.م)'
                 name='purchasePrice'
                 value={form.purchasePrice}
                 onChange={handleChange}
@@ -254,7 +246,7 @@ export default function NewProductPage() {
                 sx={{ mb: 2 }}
               />
               <TextField
-                label='سعر البيع'
+                label='سعر البيع (ج.م)'
                 name='salePrice'
                 value={form.salePrice}
                 onChange={handleChange}

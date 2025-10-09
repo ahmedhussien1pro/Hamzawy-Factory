@@ -69,18 +69,14 @@ export default function InventoryMovementDetailsPage() {
       setMovement(null);
 
       try {
-        // First try a direct get-by-id if the service exposes it
-        if (typeof inventoryService.getMovementById === 'function') {
+        if (typeof inventoryService.getMovementsByProduct === 'function') {
           try {
-            const res = await inventoryService.getMovementById(id, token);
-            // normalize single/multi shapes:
+            const res = await inventoryService.getMovementsByProduct(id, token);
             const payload = res?.data ?? res;
-            // If payload itself is the object (movement)
             if (payload && payload.id) {
               setMovement(payload);
               return;
             }
-            // If payload is wrapper that contains movement under data/movement/items
             if (payload && typeof payload === 'object') {
               if (payload.movement && payload.movement.id) {
                 setMovement(payload.movement);
@@ -108,13 +104,13 @@ export default function InventoryMovementDetailsPage() {
             }
             // if not found here, fallthrough to full-list search
             console.log(
-              'getMovementById response (not directly a single object):',
+              'getMovementsByProduct response (not directly a single object):',
               res
             );
           } catch (err) {
             // don't fail immediately — fall back to list search
             console.warn(
-              'getMovementById failed, falling back to fetching list:',
+              'getMovementsByProduct failed, falling back to fetching list:',
               err
             );
           }

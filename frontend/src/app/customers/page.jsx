@@ -1,4 +1,3 @@
-// src/app/orders/page.jsx
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -17,28 +16,34 @@ import {
   TableRow,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { getOrders, deleteOrder } from '@/services/orderService';
+import { getCustomers, deleteCustomer } from '@/services/customerService';
+import { useAuth } from '@/context/AuthContext';
 
-export default function OrdersPage() {
-  const [orders, setOrders] = useState([]);
+export default function CustomersPage() {
+  const { token } = useAuth();
+  const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getOrders()
-      .then((res) => setOrders(res.data || res))
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    getCustomers()
+      .then((res) => setCustomers(res.data || res))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [token]);
 
   const handleDelete = async (id) => {
-    if (!confirm('حذف الطلب؟')) return;
+    if (!confirm('هل تريد حذف العميل؟')) return;
     try {
-      await deleteOrder(id);
-      setOrders((o) => o.filter((x) => x.id !== id));
+      await deleteCustomer(id);
+      setCustomers((s) => s.filter((c) => c.id !== id));
       alert('تم الحذف');
-    } catch (e) {
-      console.error(e);
-      alert('خطأ');
+    } catch (err) {
+      console.error(err);
+      alert('خطأ عند الحذف');
     }
   };
 
@@ -47,11 +52,11 @@ export default function OrdersPage() {
       <Container maxWidth='lg'>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
           <Typography variant='h4' fontWeight={700}>
-            الطلبات
+            العملاء
           </Typography>
-          <Link href='/orders/new'>
+          <Link href='/customers/new'>
             <Button variant='contained' startIcon={<AddIcon />}>
-              طلب جديد
+              إضافة عميل
             </Button>
           </Link>
         </Box>
@@ -65,28 +70,31 @@ export default function OrdersPage() {
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>رقم الطلب</TableCell>
-                  <TableCell>العميل</TableCell>
-                  <TableCell>الحالة</TableCell>
-                  <TableCell>المجموع</TableCell>
+                  <TableCell>الاسم</TableCell>
+                  <TableCell>الهاتف</TableCell>
+                  <TableCell>البريد</TableCell>
+                  <TableCell>الطلبات</TableCell>
                   <TableCell align='center'>إجراءات</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {orders.map((o) => (
-                  <TableRow key={o.id} hover>
-                    <TableCell>{o.orderNumber || o.id}</TableCell>
-                    <TableCell>{o.customer?.name || '-'}</TableCell>
-                    <TableCell>{o.status}</TableCell>
-                    <TableCell>{o.totalAmount || '-'}</TableCell>
+                {customers.map((c) => (
+                  <TableRow key={c.id} hover>
+                    <TableCell>{c.name}</TableCell>
+                    <TableCell>{c.phone || '-'}</TableCell>
+                    <TableCell>{c.email || '-'}</TableCell>
+                    <TableCell>{c.orders?.length || 0}</TableCell>
                     <TableCell align='center'>
-                      <Link href={`/orders/${o.id}`}>
+                      <Link href={`/customers/${c.id}`}>
                         <Button size='small'>عرض</Button>
+                      </Link>
+                      <Link href={`/customers/${c.id}/edit`}>
+                        <Button size='small'>تعديل</Button>
                       </Link>
                       <Button
                         size='small'
                         color='error'
-                        onClick={() => handleDelete(o.id)}>
+                        onClick={() => handleDelete(c.id)}>
                         حذف
                       </Button>
                     </TableCell>
