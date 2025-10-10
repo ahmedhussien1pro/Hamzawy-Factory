@@ -1,10 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Swal from 'sweetalert2';
 import { useAuth } from '@/context/AuthContext';
 import { getProducts, deleteProduct } from '@/services/productService';
-import Swal from 'sweetalert2';
-import { Plus, Eye, Pencil, Trash2, Package } from 'lucide-react';
+import { Handbag } from 'lucide-react';
 
 export default function ProductsPage() {
   const { token } = useAuth();
@@ -14,7 +14,7 @@ export default function ProductsPage() {
   const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
-    async function fetchProducts() {
+    async function fetch() {
       try {
         const res = await getProducts();
         setProducts(res);
@@ -25,8 +25,7 @@ export default function ProductsPage() {
         setLoading(false);
       }
     }
-
-    setTimeout(fetchProducts, 500);
+    fetch();
   }, [token]);
 
   const handleDelete = async (id) => {
@@ -37,8 +36,7 @@ export default function ProductsPage() {
       showCancelButton: true,
       confirmButtonText: 'نعم، احذف',
       cancelButtonText: 'إلغاء',
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
+      confirmButtonColor: '#dc2626',
     });
 
     if (!result.isConfirmed) return;
@@ -46,126 +44,105 @@ export default function ProductsPage() {
     try {
       setDeletingId(id);
       await deleteProduct(id);
-      setProducts((currentProducts) =>
-        currentProducts.filter((p) => p.id !== id)
-      );
-      Swal.fire('تم الحذف!', 'تم حذف المنتج بنجاح.', 'success');
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+      Swal.fire('تم الحذف', 'تم حذف المنتج بنجاح', 'success');
     } catch (err) {
-      console.error('Delete error:', err);
-      Swal.fire('خطأ!', 'حدث خطأ أثناء حذف المنتج.', 'error');
+      console.error(err);
+      Swal.fire('خطأ', 'حدث خطأ أثناء حذف المنتج', 'error');
     } finally {
       setDeletingId(null);
     }
   };
 
   return (
-    <div dir='rtl' className='min-h-screen bg-gray-50 font-cairo text-gray-800'>
-      {/* Header */}
-      <header className='sticky top-0 z-10 flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 bg-white/75 px-4 py-3 shadow-sm backdrop-blur-md sm:px-6 lg:px-8'>
-        <h1 className='flex items-center gap-2 text-xl font-semibold text-gray-900'>
-          <Package className='h-5 w-5 text-blue-600' />
-          قائمة المنتجات
-        </h1>
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 py-10 px-4">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
+          <h1 className="text-2xl md:text-3xl font-bold text-blue-800 text-right w-full flex items-center justify-center md:justify-start gap-2">
+            قائمة المنتجات
+            <Handbag/>
+          </h1>
 
-        <Link
-          href='/products/new'
-          className='inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'>
-          <Plus className='h-4 w-4' />
-          إضافة منتج جديد
-        </Link>
-      </header>
+          <Link href="/products/new" className='min-w-max md:w-auto flex justify-center '>
+            <button className="w-full bg-blue-700 hover:bg-blue-800 transition text-white font-semibold px-6 py-3 rounded-xl shadow-md">
+              + إضافة منتج جديد
+            </button>
+          </Link>
+        </div>
 
-      {/* Main Content */}
-      <main className='p-4 sm:p-6 lg:p-8'>
-        {loading ? (
-          <div className='flex justify-center py-20'>
-            <div className='h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent'></div>
+      {/* <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-sm p-6"> */}
+        {/* Loading */}
+        {loading && (
+          <div className="flex justify-center py-10">
+            <div className="animate-spin h-10 w-10 border-4 border-blue-600 border-t-transparent rounded-full"></div>
           </div>
-        ) : error ? (
-          <div
-            className='rounded-lg bg-red-100 p-4 text-center text-red-700'
-            role='alert'>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div className="text-center text-red-600 bg-red-50 py-4 rounded-lg font-medium">
             {error}
           </div>
-        ) : products.length === 0 ? (
-          <div className='flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-white p-12 text-center'>
-            <Package className='mx-auto h-16 w-16 text-gray-400' />
-            <h2 className='mt-4 text-xl font-semibold text-gray-800'>
-              لا توجد منتجات بعد
-            </h2>
-            <p className='mt-2 text-sm text-gray-500'>
-              ابدأ بإضافة منتجك الأول لتراه هنا.
-            </p>
+        )}
+
+        {/* No Products */}
+        {!loading && !error && products.length === 0 && (
+          <div className="text-center text-gray-600 bg-gray-50 py-10 rounded-lg font-medium">
+            لا توجد منتجات مسجلة حالياً
           </div>
-        ) : (
-          <div className='overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-md'>
-            <table className='min-w-full divide-y divide-gray-200'>
-              <thead className='bg-gray-50'>
+        )}
+
+        {/* Products Table */}
+        {!loading && !error && products.length > 0 && (
+          <div className="overflow-x-auto rounded-xl border border-gray-200">
+            <table className="min-w-full text-right border-collapse">
+              <thead className="bg-blue-800 text-white">
                 <tr>
-                  <th className='px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500'>
-                    الكود
-                  </th>
-                  <th className='px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500'>
-                    اسم المنتج
-                  </th>
-                  <th className='px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500'>
-                    الوحدة
-                  </th>
-                  <th className='px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500'>
-                    الكمية
-                  </th>
-                  <th className='px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500'>
-                    سعر البيع
-                  </th>
-                  <th className='px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500'>
-                    الإجراءات
-                  </th>
+                  <th className="py-4 px-4 font-semibold">الكود</th>
+                  <th className="py-4 px-4 font-semibold">اسم المنتج</th>
+                  <th className="py-4 px-4 font-semibold">الوحدة</th>
+                  <th className="py-4 px-4 font-semibold">الكمية</th>
+                  <th className="py-4 px-4 font-semibold">سعر البيع</th>
+                  <th className="py-4 px-4 font-semibold text-center">الإجراءات</th>
                 </tr>
               </thead>
-              <tbody className='divide-y divide-gray-200'>
-                {products.map((p) => (
-                  <tr key={p.id} className='transition-colors hover:bg-gray-50'>
-                    <td className='whitespace-nowrap px-6 py-4 text-sm font-mono text-gray-600'>
+              <tbody>
+                {products.map((p, i) => (
+                  <tr
+                    key={p.id}
+                    className={`border-b hover:bg-gray-50 transition ${
+                      i % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                    }`}
+                  >
+                    <td className="py-3 px-4">
                       {p.sku || p.itemCode?.code || p.id}
                     </td>
-                    <td className='whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900'>
-                      {p.name}
-                    </td>
-                    <td className='whitespace-nowrap px-6 py-4 text-sm text-gray-600'>
-                      {p.unit || '-'}
-                    </td>
-                    <td className='whitespace-nowrap px-6 py-4 text-sm text-gray-600'>
-                      {p.quantity ?? 0}
-                    </td>
-                    <td className='whitespace-nowrap px-6 py-4 text-sm text-gray-600'>
+                    <td className="py-3 px-4">{p.name}</td>
+                    <td className="py-3 px-4">{p.unit || '-'}</td>
+                    <td className="py-3 px-4">{p.quantity ?? 0}</td>
+                    <td className="py-3 px-4">
                       {p.salePrice
                         ? `${Number(p.salePrice).toFixed(2)} ج.م`
                         : '-'}
                     </td>
-                    <td className='whitespace-nowrap px-6 py-4 text-center text-sm'>
-                      <div className='flex items-center justify-center gap-3'>
-                        <Link
-                          href={`/products/${p.id}`}
-                          className='text-red-500 transition-colors hover:text-red-600'
-                          title='عرض'>
-                          <Eye className='h-5 w-5' />
+                    <td className="py-3 px-4 text-center">
+                      <div className="flex justify-center gap-2 flex-wrap">
+                        <Link href={`/products/${p.id}`}>
+                          <button className="px-4 py-2 border border-gray-400 rounded-lg hover:bg-gray-100 transition text-sm font-semibold">
+                            عرض
+                          </button>
                         </Link>
-                        <Link
-                          href={`/products/${p.id}/edit`}
-                          className='text-gray-500 transition-colors hover:text-green-600'
-                          title='تعديل'>
-                          <Pencil className='h-5 w-5' />
+                        <Link href={`/products/${p.id}/edit`}>
+                          <button className="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition text-sm font-semibold">
+                            تعديل
+                          </button>
                         </Link>
                         <button
                           onClick={() => handleDelete(p.id)}
                           disabled={deletingId === p.id}
-                          className='text-gray-500 transition-colors hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50'
-                          title='حذف'>
-                          {deletingId === p.id ? (
-                            <div className='h-5 w-5 animate-spin rounded-full border-2 border-gray-400 border-t-transparent'></div>
-                          ) : (
-                            <Trash2 className='h-5 w-5' />
-                          )}
+                          className="px-4 py-2 border border-red-500 text-red-600 rounded-lg hover:bg-red-50 transition text-sm font-semibold"
+                        >
+                          {deletingId === p.id ? 'جارٍ الحذف...' : 'حذف'}
                         </button>
                       </div>
                     </td>
@@ -175,7 +152,7 @@ export default function ProductsPage() {
             </table>
           </div>
         )}
-      </main>
+      {/* </div> */}
     </div>
   );
 }

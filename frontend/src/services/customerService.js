@@ -62,10 +62,12 @@ export async function deleteCustomer(id) {
   }
 }
 
-export default {
+const customerService = {
   getCustomers,
   getCustomerById,
   createCustomer,
   updateCustomer,
   deleteCustomer,
 };
+
+export default customerService;

@@ -61,10 +61,12 @@ export async function deleteOrder(id) {
   }
 }
 
-export default {
+const orderService = {
   getOrders,
   getOrderById,
   createOrder,
   updateOrderStatus,
   deleteOrder,
 };
+
+export default orderService;
